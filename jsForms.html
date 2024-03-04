@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Temperature Converter</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+        <style>
+            body {
+                /* font roboto */
+                font-family: "Roboto", sans-serif; 
+                font-weight: 400;
+                font-style: normal;
+                /* 
+                    mengatur tampilan body
+                        margin dan padding : 0 = tidak ada margin dan padding di sekitar body
+                        display:flex = mengatur tata letak body dengan flexbox
+                        justify-content dan align-items : center = mengatur konten body di tengah dari horizontal maupun vertikal 
+                        min-height:100vh = minimal tinggi body 100% viewport height atau konten body sama dengan tinggi tampilan
+                */
+                margin: 0;
+                padding: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh; 
+                /* 
+                    mengatur background
+                    background-size: cover; = mengatur ukuran gambar background sehingga akan selalu menutupi seluruh area elemen <body>
+                    background-position: center; = mengatur posisi gambar background di tengah
+                    
+                */
+                background-image: url('https://wallpapercave.com/wp/wp6946084.jpg');
+                background-size: cover;
+                background-position: center;
+                /* posisi relatif untuk footer */
+                position: relative; 
+            }
+
+            /*
+                mengatur tampilan isi container
+            */
+            .container {
+                text-align: center;
+                background-color: rgba(255, 255, 255, 0.8); /* Added some opacity to make text readable */
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+            }
+
+            h1 {
+                margin-bottom: 20px;
+            }
+
+            .converter {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-bottom: 20px;
+            }
+
+            .converter label {
+                margin-right: 10px;
+            }
+
+            /*mengatur tampilan  input dan button*/
+            .converter select,
+            .converter input[type="number"],
+            .converter button {
+                padding: 10px;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                background-color: #f9f9f9;
+                cursor: pointer; /*mengubah kursor agar terlihat dapat melakukan interaksi*/
+                margin-right: 10px;
+            }
+
+            /*mengatur tampilan tombol "convert"*/
+            .converter button {
+                background-color: #4CAF50;
+                color: #fff;
+                border: none;
+            }
+
+            /*mengatur tampilan tempat hasil akhir perhitungan convert suhu*/
+            .result-container {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-bottom: 10px;
+            }
+
+            .result-label {
+                margin-right: 10px;
+                display: none; /* menyembunyikan/tidak menampilkan label result sebelum melakukan konversi */
+            }
+
+            /*mengatur tampilan hasil akhir*/
+            .result {
+                font-size: 18px;
+                padding: 10px;
+                border-radius: 10px;
+                background-color: #fff;
+                border: 1px solid #ccc;
+            }
+            /*mengatur tampilan error dengan tulisan berwarna merah*/
+            .error {
+                color: red;
+            }
+
+            /*mengatur tampilan footer*/
+            footer {
+                position: absolute;
+                bottom: 10px;
+                right: 10px; /* Change to left align */
+                font-size: 12px;
+                color: black; /* Change text color to black */
+            }
+
+            /*mengatur tampilan info-container yang berisi keterangan waktu hari tanggal secara real time*/
+            .info-container {
+                position: absolute;
+                top: 5px;
+                right: 5px;
+                font-size: 14px;
+                color: black;
+                text-align: right;
+                padding: 5px;
+                border-radius: 7px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                background-color: rgba(255, 255, 255, 0.8);
+            }
+        </style>
+        <!-- mengambil referensi chart dari library Chart.js -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    </head>
+    <body>
+        <!--berisikan informasi mengenai date yang didalamnya memuat jam hari tanggal-->
+        <div class="info-container">
+            <div id="date"></div>
+        </div>
+
+        <!--
+            Container berisikan informasi utama untuk konversi suhu
+            1. class converter label formUnit dan toUnit untuk fitur memberikan 
+            opsi memilih temperatur mana yang ingin dipakai dan yang ingin dihasilkan
+            serta menginputkan angka temperature yang ingin dikonversi(harus dalam angka).
+
+            2. result container untuk menampilkan result dari konversi yang telah dilakukan, 
+            disitu juga terdapat penanganan error jika bukan number yang diinputkan
+            seperti hal nya e (bisa diklasifikasikan angka karena eksponensial seperti 1e2 = 1*10^2)
+            namun jika e saja akan error atau bukan angka.
+
+            3. boiling-freezing-points untuk menampilkan titik beku dan titik didih dari 
+            masing-masing temperature. Menampikannya tersebut dalam grafik barchart.
+
+        -->
+        <div class="container">
+            <h1>Temperature Converter</h1>
+            <div class="converter">
+                <label for="fromUnit">From:</label>
+                    <select id="fromUnit">
+                        <option value="C">Celsius (°C)</option>
+                        <option value="F">Fahrenheit (°F)</option>
+                        <option value="K">Kelvin (K)</option>
+                        <option value="R">Reamur (°R)</option>
+                    </select>
+                <input type="number" id="temperature" placeholder="Enter temperature...">
+            </div>
+
+            <div class="converter">
+                <label for="toUnit">To:</label>
+                    <select id="toUnit">
+                        <option value="C">Celsius (°C)</option>
+                        <option value="F">Fahrenheit (°F)</option>
+                        <option value="K">Kelvin (K)</option>
+                        <option value="R">Reamur (°R)</option>
+                    </select>
+                <button onclick="convertTemperature()">Convert</button>
+            </div>
+
+            <div class="result-container">
+                <label class="result-label">Result:</label>
+                <div id="result" class="result"></div>
+            </div>
+
+            <div id="error" class="error"></div>
+
+            <div class="boiling-freezing-points">
+                <h2>Boiling and Freezing Points</h2>
+                <canvas id="temperatureChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    
+        <!-- menampilkan copyright dan creator -->
+        <footer>
+            Created by Wahyu Satrio Widodo(222212911) | Copyright &copy; 
+            <a href="https://wallpapercave.com/375424" target="_blank" style="text-decoration: none;">https://wallpapercave.com/u/375424</a>
+        </footer>
+
+        <script>
+            function convertTemperature() {
+                var temperature = parseFloat(document.getElementById('temperature').value); // Variabel untuk menyimpan nilai suhu yang diambil dari input dengan id temperature.
+                var fromUnit = document.getElementById('fromUnit').value; // Variabel untuk menyimpan unit suhu awal yang diambil dari input dengan id fromUnit.
+                var toUnit = document.getElementById('toUnit').value; // Variabel untuk menyimpan unit suhu yang akan dikonversi yang diambil dari input dengan id toUnit.
+                var resultElement = document.getElementById('result'); // Variabel untuk menyimpan referensi ke elemen HTML dengan id result, yang akan menampilkan hasil konversi suhu.
+                var errorElement = document.getElementById('error'); // Variabel untuk menyimpan referensi ke elemen HTML dengan id error, yang akan menampilkan pesan kesalahan jika ada.
+                var resultLabel = document.querySelector('.result-label'); // Variabel untuk menyimpan referensi ke elemen HTML dengan kelas result-label, yang akan menampilkan label hasil.
+
+                errorElement.textContent = ''; // Menghapus pesan kesalahan.
+
+                // Memeriksa apakah input suhu yang dimasukkan adalah angka. Jika tidak, akan menampilkan pesan kesalahan dan menghentikan eksekusi fungsi.
+                if (isNaN(temperature)) {
+                    errorElement.textContent = 'Please enter a valid temperature.';
+                    resultElement.textContent = '';
+                    return;
+                }
+
+                // Konversi temperature
+                switch (fromUnit) {
+                    case 'C':
+                    switch (toUnit) {
+                        case 'C':
+                        result = temperature;
+                        break;
+                        case 'F':
+                        result = (temperature * 9 / 5) + 32;
+                        break;
+                        case 'K':
+                        result = temperature + 273.15;
+                        break;
+                        case 'R':
+                        result = temperature * 4 / 5;
+                        break;
+                    }
+                    break;
+                    case 'F':
+                    switch (toUnit) {
+                        case 'C':
+                        result = (temperature - 32) * 5 / 9;
+                        break;
+                        case 'F':
+                        result = temperature;
+                        break;
+                        case 'K':
+                        result = (temperature + 459.67) * 5 / 9;
+                        break;
+                        case 'R':
+                        result = temperature * 4 / 9;
+                        break;
+                    }
+                    break;
+                    case 'K':
+                    switch (toUnit) {
+                        case 'C':
+                        result = temperature - 273.15;
+                        break;
+                        case 'F':
+                        result = temperature * 9 / 5 - 459.67;
+                        break;
+                        case 'K':
+                        result = temperature;
+                        break;
+                        case 'R':
+                        result = (temperature - 273.15) * 4 / 5;
+                        break;
+                    }
+                    break;
+                    case 'R':
+                    switch (toUnit) {
+                        case 'C':
+                        result = temperature * 5 / 4;
+                        break;
+                        case 'F':
+                        result = temperature * 9 / 4 + 32;
+                        break;
+                        case 'K':
+                        result = temperature * 5 / 4 + 273.15;
+                        break;
+                        case 'R':
+                        result = temperature;
+                        break;
+                    }
+                    break;
+                }
+
+                resultLabel.style.display = 'inline'; // Memunculkan resultLabel yang semulanya none atau tidak ditampilkan
+                // Menampilkan hasil konversi suhu dengan format dua angka di belakang koma
+                resultElement.textContent = temperature.toFixed(2) + '°' + fromUnit + ' = ' + result.toFixed(2) + '°' + toUnit;
+            }
+
+            //Membuat grafik
+            var canvas = document.getElementById('temperatureChart');
+            var ctx = canvas.getContext('2d');
+        
+            // Data titik didih dan titik beku
+            var data = {
+                labels: ['Celsius (°C)', 'Fahrenheit (°F)', 'Kelvin (K)', 'Reamur (°R)'],
+                boilingPoints: [100, 212, 373.15, 80],
+                freezingPoints: [0, 32, 273.15, 0]
+            };
+        
+            // Konfigurasi grafik
+            var config = {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Boiling Point',
+                    backgroundColor: 'rgba(255, 99, 132, 0.9)',
+                    data: data.boilingPoints
+                }, {
+                    label: 'Freezing Point',
+                    backgroundColor: 'rgba(54, 162, 235, 0.9)',
+                    data: data.freezingPoints
+                }]
+            },
+            options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            };
+        
+            // Gambar grafik
+            var myChart = new Chart(ctx, config);
+
+            // Menampilkan Jam, Hari, dan Tanggal
+            function updateDate() {
+                var now = new Date();
+                var options = {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                };
+                var hari = now.toLocaleDateString('id-ID', options);
+                var waktu = now.toLocaleTimeString('id-ID');
+                var dateElement = document.getElementById('date');
+                dateElement.innerHTML = 'Pukul: ' + waktu + '<br>' + hari;
+            }
+
+            // Memanggil updateDate 
+            updateDate();
+
+            // Update waktu setiap detik
+            setInterval(updateDate, 1000);
+        </script>
+    </body>
+</html>
